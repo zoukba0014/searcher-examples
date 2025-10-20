@@ -9,9 +9,10 @@ bincode = "1.3.3"
 bytes = "1.4.0"
 prost = "0.12"
 prost-types = "0.12"
-solana-perf = "=2.1"
-solana-sdk = "=2.1"
+solana-perf = "3.0.7"
+solana-sdk = "3.0.0"
 tonic = "0.10"
+solana-packet = "3.0.0"
 
 [build-dependencies]
 tonic-build = "0.10"

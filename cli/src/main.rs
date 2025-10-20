@@ -12,14 +12,16 @@ use jito_searcher_client::{
 };
 use log::info;
 use solana_client::nonblocking::rpc_client::RpcClient;
+use solana_commitment_config::CommitmentConfig;
 use solana_sdk::{
-    commitment_config::CommitmentConfig,
+    // commitment_config::CommitmentConfig,
     pubkey::Pubkey,
     signature::{read_keypair_file, Signer},
-    system_instruction::transfer,
+    // system_instruction::transfer,
     transaction::{Transaction, VersionedTransaction},
 };
-use spl_memo::build_memo;
+
+use solana_system_interface::instruction::transfer;
 use tokio::time::sleep;
 use tonic::{
     codegen::{Body, Bytes, InterceptedService, StdError},
@@ -280,7 +282,7 @@ where
                 .map(|i| {
                     VersionedTransaction::from(Transaction::new_signed_with_payer(
                         &[
-                            build_memo(format!("jito bundle {i}: {message}").as_bytes(), &[]),
+                            // build_memo(format!("jito bundle {i}: {message}").as_bytes(), &[]),
                             transfer(&payer_keypair.pubkey(), &tip_account, lamports),
                         ],
                         Some(&payer_keypair.pubkey()),

@@ -18,8 +18,9 @@ use jito_protos::{
 };
 use log::{info, warn};
 use solana_client::nonblocking::rpc_client::RpcClient;
+use solana_commitment_config::CommitmentConfig;
 use solana_sdk::{
-    commitment_config::CommitmentConfig,
+    // commitment_config::CommitmentConfig,
     signature::{Keypair, Signature},
     transaction::VersionedTransaction,
 };

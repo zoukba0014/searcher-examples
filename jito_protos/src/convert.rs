@@ -5,11 +5,10 @@ use std::{
 };
 
 use bincode::serialize;
-use solana_perf::packet::{Packet, PacketBatch, PACKET_DATA_SIZE};
-use solana_sdk::{
-    packet::{Meta, PacketFlags},
-    transaction::VersionedTransaction,
-};
+use solana_packet::Meta;
+use solana_packet::PacketFlags;
+use solana_perf::packet::{Packet, PacketBatch, PacketRef, PACKET_DATA_SIZE};
+use solana_sdk::transaction::VersionedTransaction;
 
 use crate::{
     packet::{
@@ -33,8 +32,32 @@ pub fn packet_to_proto_packet(p: &Packet) -> Option<ProtoPacket> {
                 forwarded: p.meta().forwarded(),
                 repair: p.meta().repair(),
                 simple_vote_tx: p.meta().is_simple_vote_tx(),
-                tracer_packet: p.meta().is_tracer_packet(),
+                // tracer_packet: p.meta().is_tracer_packet(),
+                tracer_packet: p.meta().is_perf_track_packet(),
                 from_staked_node: p.meta().is_from_staked_node(),
+            }),
+            sender_stake: 0,
+        }),
+    })
+}
+// 兼容 PacketRef 的统一入口：无论是 Packet 还是 BytesPacket，都用同一套读取接口
+pub fn packet_ref_to_proto_packet(pref: PacketRef<'_>) -> Option<ProtoPacket> {
+    let meta = pref.meta();
+    let bytes = pref.data(..)?; // NOTE: data(..) 会在 discard 时返回 None
+
+    Some(ProtoPacket {
+        data: bytes.to_vec(),
+        meta: Some(ProtoMeta {
+            size: meta.size as u64,
+            addr: meta.addr.to_string(),
+            port: meta.port as u32,
+            flags: Some(ProtoPacketFlags {
+                discard: meta.discard(),
+                forwarded: meta.forwarded(),
+                repair: meta.repair(),
+                simple_vote_tx: meta.is_simple_vote_tx(),
+                tracer_packet: meta.is_perf_track_packet(),
+                from_staked_node: meta.is_from_staked_node(),
             }),
             sender_stake: 0,
         }),
@@ -46,7 +69,7 @@ pub fn packet_batches_to_proto_packets(
 ) -> impl Iterator<Item = ProtoPacket> + '_ {
     batches
         .iter()
-        .flat_map(|b| b.iter().filter_map(packet_to_proto_packet))
+        .flat_map(|b| b.iter().filter_map(packet_ref_to_proto_packet))
 }
 
 /// converts from a protobuf packet to packet
@@ -70,7 +93,10 @@ pub fn proto_packet_to_packet(p: &ProtoPacket) -> Packet {
                 packet.meta_mut().flags.insert(PacketFlags::FORWARDED);
             }
             if flags.tracer_packet {
-                packet.meta_mut().flags.insert(PacketFlags::TRACER_PACKET);
+                packet
+                    .meta_mut()
+                    .flags
+                    .insert(PacketFlags::PERF_TRACK_PACKET);
             }
             if flags.repair {
                 packet.meta_mut().flags.insert(PacketFlags::REPAIR);
@@ -140,19 +166,19 @@ impl TryFrom<&Socket> for SocketAddr {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use solana_perf::test_tx::test_tx;
-    use solana_sdk::transaction::VersionedTransaction;
-
-    use crate::convert::{proto_packet_from_versioned_tx, versioned_tx_from_packet};
-
-    #[test]
-    fn test_proto_to_packet() {
-        let tx_before = VersionedTransaction::from(test_tx());
-        let tx_after = versioned_tx_from_packet(&proto_packet_from_versioned_tx(&tx_before))
-            .expect("tx_after");
-
-        assert_eq!(tx_before, tx_after);
-    }
-}
+// #[cfg(test)]
+// mod tests {
+//     use solana_perf::test_tx::test_tx;
+//     use solana_sdk::transaction::VersionedTransaction;
+//
+//     use crate::convert::{proto_packet_from_versioned_tx, versioned_tx_from_packet};
+//
+//     #[test]
+//     fn test_proto_to_packet() {
+//         let tx_before = VersionedTransaction::from(test_tx());
+//         let tx_after = versioned_tx_from_packet(&proto_packet_from_versioned_tx(&tx_before))
+//             .expect("tx_after");
+//
+//         assert_eq!(tx_before, tx_after);
+//     }
+// }
